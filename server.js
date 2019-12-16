@@ -17,6 +17,7 @@ var connectedClients = 0
 var receivedMessages = 0
 var successTestCase = true;
 var lastMessagesNumber = 0;
+var geofenceEventReceived = false;
 
 wss.on('connection', ws => {
   connectedClients += 1;
@@ -24,7 +25,7 @@ wss.on('connection', ws => {
   ws.on('message', message => {
     receivedMessages += 1;
     const clientMessage =  messages.ClientMessage.deserializeBinary(message);
-    // detectClientMessageType(clientMessage);
+    detectClientMessageType(clientMessage);
     
     detectTestCaseAndStart(message.toString());
   })
@@ -35,7 +36,8 @@ function detectClientMessageType(clientMessage) {
   console.log('Received message from client.');
 
   if (clientMessage.getLocationmessageList().length != 0) {
-    console.log("Location Message")
+    console.log("Location Message");
+    console.log("latitude:", clientMessage.getLocationmessageList()[0].getLatitude(), "longitude:", clientMessage.getLocationmessageList()[0].getLongitude());
   }
 
   if (clientMessage.getBluetoothmessageList().length != 0) {
@@ -56,6 +58,7 @@ function detectClientMessageType(clientMessage) {
   
   if (clientMessage.getCirculargeofenceeventsList().length != 0) {
     console.log("Geofence Event Message")
+    geofenceEventReceived = true;
   }
   
   if (clientMessage.getLocationrequest() !== undefined) {
@@ -144,15 +147,12 @@ function startTrackingTestProgress(testCase) {
     checkMessagesNumber(31000, true);
     checkSuccessTestCase(32000);
   } else if (testCase == testCases.GEOFENCEEVENT) {
-    updateLastMessagesNumber();
-    successTestCase = true;
+    geofenceEventReceived = false;
 
-    // send geofence with cupertino coordinates and big radius
-    // start test when app has just started
-    // you shouldn't track location (probably)
-    // check if you get a message when the app exit the geofence
-    // is possible that first event not to be reported
+    // Rset simulator location to Freeway Drive
+    // Start test
     
+    checkGeofenceEventAfterSeconds(50000);
   }
 }
 
@@ -165,6 +165,8 @@ let getServerSettingsForTestCase = function(testCase) {
   var geoSettings =  new messages.IosGeoSettings();
   var foregroundGeoSettings = new messages.IosStandardGeoSettings();
   var backgroundGeoSettings = new messages.IosStandardGeoSettings();
+
+  var circularGeofence= new messages.IosCircularGeoFence();
 
   var beaconSettings =  new messages.IosBeaconSettings();   
   var beaconMonitoringSettings = new messages.BeaconMonitoring();
@@ -195,6 +197,8 @@ let getServerSettingsForTestCase = function(testCase) {
         geoSettings.setBackgroundgeo(backgroundGeoSettings)
         geoSettings.setSignificantupates(true);
 
+        geoSettings.setIoscirculargeofencesList(geofencesArray);
+
         beaconSettings.setMonitoring(beaconMonitoringSettings)
         beaconSettings.setForegroundranging(foregrounfBeaconRanging);
         beaconSettings.setBackgroundranging(backgrounfBeaconRanging);
@@ -215,6 +219,8 @@ let getServerSettingsForTestCase = function(testCase) {
         geoSettings.setForegroundgeo(foregroundGeoSettings)
         geoSettings.setBackgroundgeo(backgroundGeoSettings)
         geoSettings.setSignificantupates(true);
+
+        geoSettings.setIoscirculargeofencesList(geofencesArray);
 
         beaconSettings.setMonitoring(beaconMonitoringSettings)
         beaconSettings.setForegroundranging(foregrounfBeaconRanging);
@@ -237,6 +243,8 @@ let getServerSettingsForTestCase = function(testCase) {
         geoSettings.setBackgroundgeo(backgroundGeoSettings)
         geoSettings.setSignificantupates(true);
 
+        geoSettings.setIoscirculargeofencesList(geofencesArray);
+
         beaconSettings.setMonitoring(beaconMonitoringSettings)
         beaconSettings.setForegroundranging(foregrounfBeaconRanging);
         beaconSettings.setBackgroundranging(backgrounfBeaconRanging);
@@ -256,6 +264,8 @@ let getServerSettingsForTestCase = function(testCase) {
         geoSettings.setBackgroundgeo(backgroundGeoSettings)
         geoSettings.setSignificantupates(true);
 
+        geoSettings.setIoscirculargeofencesList(geofencesArray);
+
         beaconSettings.setMonitoring(beaconMonitoringSettings)
         beaconSettings.setForegroundranging(foregrounfBeaconRanging);
         beaconSettings.setBackgroundranging(backgrounfBeaconRanging);
@@ -269,8 +279,8 @@ let getServerSettingsForTestCase = function(testCase) {
     case testCases.GEOFENCEEVENT:
         globalSettings.setRadiosilence(0);
 
-        foregroundGeoSettings.setDesiredaccuracy(100);
-        foregroundGeoSettings.setDistancefilter(100000);
+        foregroundGeoSettings.setDesiredaccuracy(1);
+        foregroundGeoSettings.setDistancefilter(3000);
         foregroundGeoSettings.setPausesupdates(false);
 
         geoSettings.setForegroundgeo(foregroundGeoSettings)
@@ -281,13 +291,9 @@ let getServerSettingsForTestCase = function(testCase) {
         beaconSettings.setForegroundranging(foregrounfBeaconRanging);
         beaconSettings.setBackgroundranging(backgrounfBeaconRanging);
 
-// Coordinates for Freeway Ride, Standford, CA, US (next to Cupertino)
-// 37.403509, -122.186210
-
-        var circularGeofence= new messages.IosCircularGeoFence();
-        circularGeofence.setLatitude(37.403509);
-        circularGeofence.setLongitude(-122.186210);
-        circularGeofence.setRadius(20000);
+        circularGeofence.setLatitude(37.3352);
+        circularGeofence.setLongitude(-122.0325);
+        circularGeofence.setRadius(500);
 
         var geofencesArray = [circularGeofence];
 
@@ -342,5 +348,15 @@ function checkMessagesFlowAfterSeconds(seconds) {
        successTestCase = false
     }
     lastMessagesNumber = receivedMessages;
+  }, seconds);
+}
+
+function checkGeofenceEventAfterSeconds(seconds) {
+  setTimeout(function() { 
+    if (geofenceEventReceived) {
+      console.log("\n@@@ Test result: success\n");
+    } else {
+      console.log("\n@@@ Test result: failure\n");
+    }
   }, seconds);
 }
