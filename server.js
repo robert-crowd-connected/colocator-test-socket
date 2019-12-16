@@ -23,11 +23,49 @@ wss.on('connection', ws => {
 
   ws.on('message', message => {
     receivedMessages += 1;
-    console.log('Received message from client.'); //=> ${message}`)
+    const clientMessage =  messages.ClientMessage.deserializeBinary(message);
+    // detectClientMessageType(clientMessage);
+    
     detectTestCaseAndStart(message.toString());
   })
   ws.send('Hello! Your Test Websocket is ready and connected.')
 })
+
+function detectClientMessageType(clientMessage) {
+  console.log('Received message from client.');
+
+  if (clientMessage.getLocationmessageList().length != 0) {
+    console.log("Location Message")
+  }
+
+  if (clientMessage.getBluetoothmessageList().length != 0) {
+    console.log("Bluetooth Message")
+  }
+  
+  if (clientMessage.getIbeaconmessageList().length != 0) {
+    console.log("iBeacon Message")
+  }
+  
+  if (clientMessage.getAliasList().length != 0) {
+    console.log("Alias Message")
+  }
+  
+  if (clientMessage.getStepList().length != 0) {
+    console.log("Steps Message")
+  }
+  
+  if (clientMessage.getCirculargeofenceeventsList().length != 0) {
+    console.log("Geofence Event Message")
+  }
+  
+  if (clientMessage.getLocationrequest() !== undefined) {
+    console.log("Location Request Message")
+  }
+  
+  if (clientMessage.getIoscapability() !== undefined) {
+    console.log("iOS Capability Message")
+  }
+}
 
 function detectTestCaseAndStart(commandString) {
   var testCase = testCases.UNKNOWN;
